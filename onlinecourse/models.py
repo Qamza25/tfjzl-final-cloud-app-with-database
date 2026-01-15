@@ -94,10 +94,42 @@ class Enrollment(models.Model):
     mode = models.CharField(max_length=5, choices=COURSE_MODES, default=AUDIT)
     rating = models.FloatField(default=5.0)
 
+   class Question(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    content = models.CharField(max_length=200)
+    grade = models.IntegerField(default=50)
+    
+    def __str__(self):
+        return "Question: " + self.content
+    
+    def is_get_score(self, selected_ids):
+        """
+        Calculate if the learner gets the score of the question
+        
+        Args:
+            selected_ids: List of selected choice IDs
+        
+        Returns:
+            bool: True if all correct answers are selected and no incorrect ones are selected
+        """
+        # Get all correct choices for this question
+        all_correct_answers = self.choice_set.filter(is_correct=True).count()
+        
+        # Count how many of the selected choices are correct
+        selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
+        
+        # Count how many choices were selected total
+        selected_total = self.choice_set.filter(id__in=selected_ids).count()
+        
+        # Learner gets the score if:
+        # 1. All correct answers are selected
+        # 2. No incorrect answers are selected (selected_total == selected_correct)
+        # 3. At least one correct answer exists (to avoid division by zero)
+        return all_correct_answers > 0 and selected_correct == all_correct_answers and selected_total == selected_correct
 
 # One enrollment could have multiple submission
 # One submission could have multiple choices
 # One choice could belong to multiple submissions
-#class Submission(models.Model):
-#    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
-#    choices = models.ManyToManyField(Choice)
+class Submission(models.Model):
+   enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+   choices = models.ManyToManyField(Choice)
